@@ -64,8 +64,7 @@ export class SSOApiGateway {
                 TENANT_ID: tenant_id ? tenant_id: '',
                 IMPORTUSERS_BUCKET: this.imoprtUsersJobsS3Bucket.bucketName,
             },
-            timeout: Duration.minutes(15),
-            retryAttempts: 0
+            timeout: Duration.minutes(14)
         });
 
         workerlambda.role?.attachInlinePolicy(
@@ -105,7 +104,6 @@ export class SSOApiGateway {
                             's3:GetObject',
                             's3:PutObject',
                             's3:DeleteObject',
-                            's3:ListBucket',
                         ],
                     }),
                 ],

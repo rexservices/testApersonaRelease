@@ -141,11 +141,7 @@ export const handler = async (event) => {
         usersCount = resData.length;
       }
 
-      console.log("list user import jobs resData", res);
-
-      res.sort((a, b) => {
-        return new Date(b.CreationDate) - new Date(a.CreationDate);
-      });
+      console.log("list user import jobs resData", resData);
 
       return {
         statusCode: 200,

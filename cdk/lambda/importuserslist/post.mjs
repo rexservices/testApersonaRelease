@@ -19,7 +19,6 @@ const genImportUsersJob = async (
   userPoolId,
   admin,
   notify,
-  totalusernumber,
   dynamodb,
 ) => {
   console.log("generating user import job id for userpool id:", userPoolId);
@@ -37,12 +36,6 @@ const genImportUsersJob = async (
       },
       jobstatus: {
         S: "PENDING",
-      },
-      totalusers: {
-        N: `${totalusernumber}`,
-      },
-      failedusers: {
-        S: "[]",
       },
       userpoolid: {
         S: userPoolId,
@@ -75,7 +68,6 @@ export const postResData = async (data, userpoolId, dynamodbISP) => {
       userpoolId,
       data.admin,
       data.notify,
-      data.totalusers,
       dynamodbISP,
     );
 
