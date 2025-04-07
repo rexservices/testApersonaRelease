@@ -15,7 +15,10 @@ import {
   S3Client,
   GetObjectCommand,
   DeleteObjectCommand,
+  PutObjectCommand,
 } from "@aws-sdk/client-s3";
+
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 
 import { getSMTP } from "./kmsUtil.mjs";
 
@@ -23,8 +26,8 @@ const cognitoISP = new CognitoIdentityProviderClient({
   region: process.env.AWS_REGION,
 });
 const dynamodbISP = new DynamoDBClient({ region: process.env.AWS_REGION });
-
 const s3ISP = new S3Client({ region: process.env.AWS_REGION });
+const lambda = new LambdaClient({ region: process.env.AWS_REGION });
 
 const rateLimit = 25; // the amount inparral user creation //addusertogroup and linkprovider are 25 RPS.
 
@@ -209,14 +212,12 @@ export const handler = async (event) => {
   };
 
   console.info("EVENT\n" + JSON.stringify(event, null, 2));
+  const { notify, userpoolId, admin } = event;
 
   try {
     // get users csv content from dynamodb table.
     // table index is event.jobid, table name is event.tableName
     // get the csv content from dynamodb table, and convert to csv content string.
-
-    const { notify, userpoolId, admin } = event;
-
     const res = await s3ISP.send(
       new GetObjectCommand({
         Bucket: process.env.IMPORTUSERS_BUCKET,
@@ -439,6 +440,18 @@ export const handler = async (event) => {
     }
 
     if (restUserData.length > 0) {
+      const command = new InvokeCommand({
+        FunctionName: process.env.IMPORTUSERS_WORKER_LAMBDA,
+        InvocationType: "Event",
+        Payload: JSON.stringify({
+          jobid: event.jobid,
+          notify,
+          userpoolId,
+          admin,
+          tableName: process.env.IMPORTUSERS_JOB_ID_TABLE,
+        }),
+      });
+
       const response = await lambda.send(command);
       console.log("start new worker lambda response:", response);
 

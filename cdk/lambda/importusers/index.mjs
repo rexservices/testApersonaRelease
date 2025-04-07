@@ -72,7 +72,7 @@ export const handler = async (event) => {
         id: res.Item.jobid.S,
         JobId: res.Item.jobid.S,
         CreationDate: (new Date(parseInt(res.Item.timestamp.N))).toUTCString(),
-        CompletionDate: (new Date(parseInt(res.Item.timestamp.N))).toUTCString(),
+        CompletionDate: (new Date(parseInt(res.Item.completiondate.N))).toUTCString(),
         Status: res.Item.jobstatus.S,
         FailedUsers: failedUsersNumber,
         FailureDetails,

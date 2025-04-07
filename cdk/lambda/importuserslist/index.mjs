@@ -79,11 +79,11 @@ export const handler = async (event) => {
       let scanParams = {
         TableName: process.env.IMPORTUSERS_JOB_ID_TABLE,
         ConsistentRead: true,
-        ...(PaginationToken && { ExclusiveStartKey: PaginationToken }),
+        // ...(PaginationToken && { ExclusiveStartKey: PaginationToken }),
         FilterExpression,
         ExpressionAttributeValues,
         // ProjectionExpression: "jobid, status, importedusers, failedusers, createdby, timestamp",
-        Limit: parseInt(event.queryStringParameters.perPage), // No of users to display per page
+        Limit: 1000,//parseInt(event.queryStringParameters.perPage), // No of users to display per page
         ReturnConsumedCapacity: "NONE",
       };
 
@@ -93,21 +93,42 @@ export const handler = async (event) => {
         new ScanCommand(scanParams),
       );
       console.log("listUserImportJobs result", listImportUsersJobData);
-      // If no remaining jobs are there, no paginationToken is returned from cognito
-      PaginationToken = listImportUsersJobData.LastEvaluatedKey;
 
       let resData = listImportUsersJobData.Items;
       const page = parseInt(event.queryStringParameters.page);
       const perPage = parseInt(event.queryStringParameters.perPage);
-      const start = (page - 1) * perPage + 1;
-      const end = resData.length + start - 1;
-      let usersCount = 0;
+
+      if (resData && resData.length > 0) {
+        resData.sort((a, b) => {
+          if (a.timestamp.N > b.timestamp.N) return -1;
+          else return 1;
+        });
+      }
+      else {
+        resData = [];
+      }
+
+      const start = (page - 1) * perPage;
+      const end = resData.length > start + perPage ? start + perPage : resData.length;
+      const jobsCount = resData.length;
+
+
+      console.log("start", start, "end", end, "page", page, "perPage", perPage, "resData.length", resData.length);
+
+      // If no remaining jobs are there, no paginationToken is returned from cognito
+      PaginationToken = (end >= resData.length) ? null : end;//listImportUsersJobData.LastEvaluatedKey;
+
+      if (resData.length > start) {
+        resData = resData.slice(start, end);
+      }
+      console.log("resData", resData);
+
 
       let res = []
 
-      if (resData && resData.length > 0) {
+      if (resData.length > 0) {
         res = resData.map((item) => {
-          console.log ('resdata item', item);
+          // console.log ('resdata item', item);
           let data = {}
 
           data.id = item.jobid.S;
@@ -138,14 +159,9 @@ export const handler = async (event) => {
           data.CreatedBy = item.createdby.S;
           return data;
         });
-        usersCount = resData.length;
       }
 
       console.log("list user import jobs resData", res);
-
-      res.sort((a, b) => {
-        return new Date(b.CreationDate) - new Date(a.CreationDate);
-      });
 
       return {
         statusCode: 200,
@@ -155,7 +171,7 @@ export const handler = async (event) => {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "OPTIONS,GET,POST",
           "Access-Control-Expose-Headers": "Content-Range",
-          "Content-Range": `users ${start}-${end}/${usersCount}`,
+          "Content-Range": `users ${start+1}-${end}/${jobsCount}`,
         },
         body: JSON.stringify({
           data: res,
@@ -165,6 +181,7 @@ export const handler = async (event) => {
             hasNextPage: PaginationToken ? true : false,
           },
           PaginationToken,
+          total: jobsCount,
         }),
       };
     }
